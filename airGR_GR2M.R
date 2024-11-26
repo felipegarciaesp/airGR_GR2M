@@ -94,10 +94,6 @@ write.csv(ET_mon, 'ETobs.csv')
 # A continuación, se leerán las variables necesarias para calibrar y validar el
 # modelo GR2M de airGR para estimar caudales.
 # Para esto se han cargado las librerías zoo, airGR, openxlsx, hydroGOF.
-# Debemos convertir las fechas a un formato POSIXct, requerido para correr el
-# modelo GR2M:
-
-PPload$date <- as.POSIXct(PPload$date)
 
 # Algunos comandos de interés en R:
 # Con class podemos verificar la clase de la columna "date".
@@ -106,5 +102,38 @@ PPload$date <- as.POSIXct(PPload$date)
 # Con str podemos obtener una estructura detallada del dataframe:
 # str(PPload)
 
+# En este caso, se va a calibrar el modelo con los datos del periodo 1989-2020.
+# Se va a querer que en la calibracion esten contenidos los datos de los ultimos
+# años, ya que son los mas secos. Luego se va a verificar con los datos de los
+# primeros 10 años.
+
+ini_cal <- as.Date("1989-01-01")
+fin_cal <- as.Date("2020-04-01")
+
+# Definido el periodo de calibracion, filtramos los dataframe de Pp y ET para
+# estas fechas.
+
+PPload_calib <- PPload[PPload$date >= ini_cal & PPload$date <= fin_cal, ]
+ET_calib <- ET_mon[ET_mon$date >= ini_cal & ET_mon$date <= fin_cal, ]
+
+# Debemos convertir las fechas a un formato POSIXct, requerido para correr el
+# modelo GR2M:
+
+PPload_calib$date <- as.POSIXct(PPload_calib$date)
+
+# NOTA: la conversion a POSIXct prefiero hacerla en esta etapa y no antes. Esto
+# debido a que al hacer el filtrado con las fechas en formato POSIXct no me va
+# a tomar la primera fecha. Por eso prefiero filtrar y despues transformar el
+# formato de las fechas. Ten en consideración esto para futuros codigos.
 
 
+
+
+
+# El modelo airGR requiere de los siguientes pasos:
+# 1. Crear las entradas al modelo en la variable InputsModel_Cuenca mediante la
+# función "CreateInputsModel".
+InputsModel_Cuenca <- CreateInputsModel(FUN_MOD = RunModel_GR2M, 
+                                        DatesR = PPload_calib$date,
+                                        Precip = PPload_calib$`Pp (mm)`,
+                                        PotEvap = ET_calib$`ET (mm)`)
