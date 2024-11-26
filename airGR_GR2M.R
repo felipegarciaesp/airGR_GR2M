@@ -38,25 +38,29 @@ ruta_archivos <- paste0(getwd(),"/",carpeta)
 pp_mon <- "precip_cr2met_mon.csv"
 tmax_mon <- "tmax_cr2met_mon.csv"
 tmin_mon <- "tmin_cr2met_mon.csv"
+q_mon <- "q_mm_mon.csv"
 
 # Se identifican rutas de estos archivos:
 ruta_pp_mon <- paste0(ruta_archivos,"/",pp_mon)
 ruta_tmax_mon <- paste0(ruta_archivos,"/",tmax_mon)
 ruta_tmin_mon <- paste0(ruta_archivos,"/",tmin_mon)
+ruta_q_mon <- paste0(ruta_archivos,"/",q_mon)
 
-# Se cargan los archivos requeridos (pp, tmax y tmin):
+# Se cargan los archivos requeridos (pp, tmax, tmin y q):
 PPload <- read_csv(ruta_pp_mon)
 tmax_load <- read_csv(ruta_tmax_mon)
 tmin_load <- read_csv(ruta_tmin_mon)
-
+Qload <- read_csv(ruta_q_mon)
 
 # Asignamos la latitud de la cuenca a la variable lat_point:
 lat_point <- -36.02 #Correspondiente a la salida de la cuenca Cauquenes.
 
 # Dejamos los dataframe solo con fecha y la data de interes:
+# Ojo que esto lo podria dejar como una funcion (u OOP):
 PPload <- PPload %>% select('date','7336001') %>% rename('Pp (mm)' = '7336001')
 tmax_load <- tmax_load %>% select('date','7336001') %>% rename('tmax (deg)' = '7336001')
 tmin_load <- tmin_load %>% select('date','7336001') %>% rename('tmin (deg)' = '7336001')
+Qload <- Qload %>% select('date','7336001') %>% rename('Q (mm)' = '7336001')
 
 # Calculamos la temperatura promedio y lo almacenamos en un nuevo dataframe:
 # 1ero, combinamos los df por la columna 'date':
@@ -86,3 +90,9 @@ ET_mon[,2] <- 30 * PE_Oudin(JD = temp_avg$julian_date, Temp = temp_avg$temperatu
 
 # Se guarda resultado de la ETP de Oudin en la carpeta de trabajo:
 write.csv(ET_mon, 'ETobs.csv')
+
+# A continuación, se leerán las variables necesarias para calibrar y validar el
+# modelo GR2M de airGR para estimar caudales.
+# Para esto se han cargado las librerías zoo, airGR, openxlsx, hydroGOF.
+
+
