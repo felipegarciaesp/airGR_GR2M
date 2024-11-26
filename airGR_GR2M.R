@@ -94,5 +94,17 @@ write.csv(ET_mon, 'ETobs.csv')
 # A continuación, se leerán las variables necesarias para calibrar y validar el
 # modelo GR2M de airGR para estimar caudales.
 # Para esto se han cargado las librerías zoo, airGR, openxlsx, hydroGOF.
+# Debemos convertir las fechas a un formato POSIXct, requerido para correr el
+# modelo GR2M:
+
+PPload$date <- as.POSIXct(PPload$date)
+
+# Algunos comandos de interés en R:
+# Con class podemos verificar la clase de la columna "date".
+# class(PPload$date)
+
+# Con str podemos obtener una estructura detallada del dataframe:
+# str(PPload)
+
 
 
