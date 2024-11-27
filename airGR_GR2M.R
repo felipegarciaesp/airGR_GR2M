@@ -57,39 +57,84 @@ lat_point <- -36.02 #Correspondiente a la salida de la cuenca Cauquenes.
 
 # Dejamos los dataframe solo con fecha y la data de interes:
 # Ojo que esto lo podria dejar como una funcion (u OOP):
-PPload <- PPload %>% select('date','7336001') %>% rename('Pp (mm)' = '7336001')
-tmax_load <- tmax_load %>% select('date','7336001') %>% rename('tmax (deg)' = '7336001')
-tmin_load <- tmin_load %>% select('date','7336001') %>% rename('tmin (deg)' = '7336001')
-Qload <- Qload %>% select('date','7336001') %>% rename('Q (mm)' = '7336001')
+PPload <- PPload %>% select('date','7336001') %>% rename(P = '7336001')
+tmax_load <- tmax_load %>% select('date','7336001') %>% rename(tmax = '7336001')
+tmin_load <- tmin_load %>% select('date','7336001') %>% rename(tmin = '7336001')
+Qload <- Qload %>% select('date','7336001') %>% rename(Q = '7336001')
 
-# Calculamos la temperatura promedio y lo almacenamos en un nuevo dataframe:
+# Para la cuenca solo nos interesa la temperatura promedio, por lo que la
+# calculamos y la almacenamos en un nuevo dataframe:
 # 1ero, combinamos los df por la columna 'date':
 temp_combined <- left_join(tmax_load, tmin_load, by='date')
 
 # 2do, calculamos la temperatura promedio usando mutate y rowMeans:
 temp_avg <- temp_combined %>% 
-  mutate(temperature_avg = rowMeans(select(., 'tmax (deg)', 'tmin (deg)'), na.rm = TRUE)) %>% 
-  select(date, temperature_avg)
+  mutate(T = rowMeans(select(., 'tmax', 'tmin'), na.rm = TRUE)) %>% 
+  select(date, T)
+
+# Ahora calcularemos la ET con la ecuación de Oudin:
+# 1ero, creamos un dataframe vacío para ir almacenando los datos:
+n <- nrow(PPload) #Determinamos la cantidad de filas (meses) que tiene PPload.
+ET_mon <- data.frame(matrix(ncol = 2, nrow = n)) #dataframe de 2 columna y n filas.
+colnames(ET_mon) <- c('date', 'ET')
+
+# 2do, rellenamos la primera columna con la fecha:
+ET_mon[,1] <- temp_avg$date
 
 # 3ero, agregamos una nueva columna en el dataframe con los días julianos.
 # Esto es para poder ocupar la formula de Oudin.
 temp_avg$julian_date <- yday(temp_avg$date)
 
-# Calcularemos la ET con la ecuación de Oudin:
-# 1ero, creamos un dataframe vacío para ir almacenando los datos:
-n <- nrow(PPload) #Determinamos la cantidad de filas (meses) que tiene PPload.
-ET_mon <- data.frame(matrix(ncol = 2, nrow = n)) #dataframe de 2 columna y n filas.
-colnames(ET_mon) <- c('date', 'ET (mm)')
-
-# 2do, rellenamos la primera columna con la fecha:
-ET_mon[,1] <- temp_avg$date
-
-# 3ero, calculamos la ET con la ecuación de Oudin:
-ET_mon[,2] <- 30 * PE_Oudin(JD = temp_avg$julian_date, Temp = temp_avg$temperature_avg,
+# 4to, calculamos la ET con la ecuación de Oudin:
+ET_mon[,2] <- 30 * PE_Oudin(JD = temp_avg$julian_date, Temp = temp_avg$T,
                             Lat = lat_point, LatUnit = "deg")
 
 # Se guarda resultado de la ETP de Oudin en la carpeta de trabajo:
 write.csv(ET_mon, 'ETobs.csv')
+
+# Creamos un dataframe que almacena toda la info obs de la cuenca:
+BasinObs <- PPload %>%
+  left_join(Qload, by = 'date') %>%
+  left_join(ET_mon, by = 'date') %>%
+  left_join(select(temp_avg, date, T), by = 'date')
+
+# De esta forma tenemos el dataframe BasinObs que contiene:
+# date: fechas en formato Date.
+# P: precipitacion en mm/mes.
+# Q: escorrentia en mm/mes.
+# ET: evapotranspiracion en mm/mes.
+# T: temperatura promedio en °C.
+
+
+
+# Calculamos la temperatura promedio y lo almacenamos en un nuevo dataframe:
+# 1ero, combinamos los df por la columna 'date':
+#temp_combined <- left_join(tmax_load, tmin_load, by='date')
+
+# 2do, calculamos la temperatura promedio usando mutate y rowMeans:
+#temp_avg <- temp_combined %>% 
+#  mutate(temperature_avg = rowMeans(select(., 'tmax (deg)', 'tmin (deg)'), na.rm = TRUE)) %>% 
+#  select(date, temperature_avg)
+
+# 3ero, agregamos una nueva columna en el dataframe con los días julianos.
+# Esto es para poder ocupar la formula de Oudin.
+#temp_avg$julian_date <- yday(temp_avg$date)
+
+# Calcularemos la ET con la ecuación de Oudin:
+# 1ero, creamos un dataframe vacío para ir almacenando los datos:
+#n <- nrow(PPload) #Determinamos la cantidad de filas (meses) que tiene PPload.
+#ET_mon <- data.frame(matrix(ncol = 2, nrow = n)) #dataframe de 2 columna y n filas.
+#colnames(ET_mon) <- c('date', 'ET (mm)')
+
+# 2do, rellenamos la primera columna con la fecha:
+#ET_mon[,1] <- temp_avg$date
+
+# 3ero, calculamos la ET con la ecuación de Oudin:
+#ET_mon[,2] <- 30 * PE_Oudin(JD = temp_avg$julian_date, Temp = temp_avg$temperature_avg,
+#                            Lat = lat_point, LatUnit = "deg")
+
+# Se guarda resultado de la ETP de Oudin en la carpeta de trabajo:
+#write.csv(ET_mon, 'ETobs.csv')
 
 # A continuación, se leerán las variables necesarias para calibrar y validar el
 # modelo GR2M de airGR para estimar caudales.
@@ -137,3 +182,5 @@ InputsModel_Cuenca <- CreateInputsModel(FUN_MOD = RunModel_GR2M,
                                         DatesR = PPload_calib$date,
                                         Precip = PPload_calib$`Pp (mm)`,
                                         PotEvap = ET_calib$`ET (mm)`)
+
+# 2. 
