@@ -140,11 +140,11 @@ meses_cal <- 376 #ESTO LO TENEMOS QUE CAMBIAR!
 # Vamos a inicializar algunos dataframe vacios para guardar los parametros del
 # modelo, los Nash-Sutcliffe Efficiency y los Q simulados.
 # 1. El modelo tiene 2 parametros, los guardaremos en el df 'parametros'.
-parametros <- data.frame(matrix(ncol = 1, nrow = 2))
+parametros <- data.frame(parametros = matrix(ncol = 1, nrow = 2))
 # 2. Solo hay un valor de Nash:
-Ef_NS <- data.frame(matrix(ncol = 1, nrow = 1))
+Ef_NS <- data.frame(Ef_NS = matrix(ncol = 1, nrow = 1))
 # 3. Creamos un df con 'meses_cal' con el numero de columnas
-Q_sim <- data.frame(matrix(ncol = 1, nrow = meses_cal))
+Q_sim <- data.frame(Q_sim = matrix(ncol = 1, nrow = meses_cal))
 
 # El modelo airGR requiere de los siguientes pasos:
 # 1. Crear las entradas al modelo en la variable InputsModel_Cuenca mediante la
@@ -207,10 +207,70 @@ InputsCrit_NSE<- CreateInputsCrit(FUN_CRIT = ErrorCrit_NSE,
 OutputsCrit_NSE <- ErrorCrit_NSE(InputsCrit = InputsCrit_NSE, 
                                  OutputsModel = Qsim_Calib_Cuenca)
 
-Ef_NS <- OutputsCrit_NSE$CritValue
+Ef_NS[,1] <- OutputsCrit_NSE$CritValue
+
+
 
 # Podemos usar la función ggof para obtener una evaluación grafica de la 
 # simulación
-ggof(sim=Qsim_Calib_Cuenca$Qsim, obs=InputsCrit_NSE$Obs, ftype="ma", FUN=mean)
+ggof(sim=Qsim_Calib_Cuenca$Qsim, obs=InputsCrit_NSE$Obs, ftype="ma", FUN=sum)
 
-ggof(sim=Qsim_Calib_Cuenca$Qsim, obs=InputsCrit_NSE$Obs, dates = ,ftype="ma", FUN=mean)
+# ESTE GRAFICO VA A GRAFICAR LOS RESULTADOS A NIVEL MENSUAL Y ANUAL, PERO NO ME
+# ESTA FUNCIONANDO AUN. REVISAR!
+ggof(sim=Qsim_Calib_Cuenca$Qsim, obs=InputsCrit_NSE$Obs, dates = BasinObs$date[Run_Calib_Period], ftype="ma", FUN=sum, ylab = 'Q[mm]', xlab = 'Fecha')
+
+# A continuación, viene el proceso de validación del modelo. 
+# Se va a tomar todo el periodo del que se tiene datos para ingresar al modelo,
+# es decir, desde 01/1979 hasta 04/2020.
+
+ini_proy <- '01/1979'
+fin_proy <- '04/2020'
+
+# Inicializamos un dataframe con valores 0 y con la misma cantidad de filas que
+# el dataframe BasinObs. Esto representa el periodo completo (periodo de 
+# validacion + periodo de calibracion).
+
+Q_proy <- data.frame(Q_proy=matrix(ncol = 1, nrow = nrow(BasinObs)))
+
+# Empezamos a correr la simulacion para la validación:
+
+# 1. Usamos la función "CreateInputsModel" para crear las variables de entrada 
+# para proyectar o correr el modelo
+Inputs_Modelos <- CreateInputsModel(FUN_MOD = RunModel_GR2M, 
+                                    DatesR = BasinObs$date,
+                                    Precip = BasinObs$P, 
+                                    PotEvap = BasinObs$ET)
+
+# 2. Usamos la función "seq" para establecer las fechas de la simulación
+Run_period_Modelos <- seq(which(format(BasinObs$date, format = "%m/%Y")==ini_proy),
+                        which(format(BasinObs$date, format = "%m/%Y")==fin_proy))
+
+# 3. Usamos la función "CreateRunOptions" para establecer las opciones de modelación
+Run_Options_Modelos <- CreateRunOptions(FUN_MOD = RunModel_GR2M,
+                                        InputsModel = Inputs_Modelos, 
+                                        IndPeriod_Run = Run_period_Modelos)
+
+# 4. Usamos la funcion 'RunModel_GR2M' para correr el modelo usando los parámetros
+# ya calibrados previamente.
+Run_Modelos <- RunModel_GR2M(InputsModel = Inputs_Modelos, 
+                             RunOptions = Run_Options_Modelos,
+                             Param = parametros[,1])
+
+# 5. Rellenamos el df Q_val con los caudales simulados:
+Q_proy[,1] <- Run_Modelos$Qsim
+
+
+# Finalmente, vamos a evaluar el modelo en el periodo de validacion, que 
+# corresponde al periodo 01/1979 - 12/1988
+
+# AL RETOMAR, HAZ EL CODIGO QUE ESTÁ AQUÍ, QUE BASICAMENTE CORRESPONDE A UTILIZAR
+# LA FUNCION ggof. INTENTA QUE TE RESULTE LA LINEA DE PILAR BARRIA.
+
+# Se calculan los residuos:
+res <- Run_Modelos$Qsim - BasinObs$Q
+
+# Se grafican los residuos y se obtienen sus metricas con hydroTSM.
+plot(res)
+smry(res)
+
+
