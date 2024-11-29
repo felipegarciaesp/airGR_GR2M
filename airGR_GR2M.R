@@ -215,11 +215,34 @@ Ef_NS[,1] <- OutputsCrit_NSE$CritValue
 # simulación
 ggof(sim=Qsim_Calib_Cuenca$Qsim, obs=InputsCrit_NSE$Obs, ftype="ma", FUN=sum)
 
-# ESTE GRAFICO VA A GRAFICAR LOS RESULTADOS A NIVEL MENSUAL Y ANUAL, PERO NO ME
-# ESTA FUNCIONANDO AUN. REVISAR!
-ggof(sim=Qsim_Calib_Cuenca$Qsim, obs=InputsCrit_NSE$Obs, dates = BasinObs$date[Run_Calib_Period], ftype="ma", FUN=sum, ylab = 'Q[mm]', xlab = 'Fecha')
+# En clases, Pilar nos ha mostrado una linea de codigo con ggof que grafica
+# los caudales a nivel mensual y a nivel anual. En ambos casos se muestran
+# las metricas y en el eje x se encuentran las fechas.
 
-# A continuación, viene el proceso de validación del modelo. 
+# Para que nos resulte, tengo que volver a cambiar el formato de fechas a Date.
+dates <- as.Date(BasinObs$date[Run_Calib_Period])
+
+# A continuación, el codigo para lograr el mencionado grafico:
+ggof(sim=Qsim_Calib_Cuenca$Qsim, 
+     obs=InputsCrit_NSE$Obs,
+     dates = dates, 
+     ftype="ma", 
+     FUN=sum,
+     ylab = 'Q[mm]', 
+     xlab = 'Fecha')
+
+# El grafico no me esta resultando como a Pilar:
+# a. De partida yo tengo que cambiar el formato de las fechas a Date.
+# b. A mi no me aparecen las metricas del grafico anual, me arroja una alerta por
+#    los valores NA.
+# c. El paquete es extraño, cuando defino na.rm = FALSE ahi recien omite los
+#    valores nulos y me calcula las metricas, pero es contraintuitivo. Aunque
+#    esto podría funcionar, me queda la duda de porque no obtengo los mismos
+#    resultados que Pilar.
+# Una solucion es que calcules las metricas de otra forma, podrías tu hacer los
+# codigos en R.
+
+# Ahora, viene el proceso de validación del modelo. 
 # Se va a tomar todo el periodo del que se tiene datos para ingresar al modelo,
 # es decir, desde 01/1979 hasta 04/2020.
 
@@ -263,8 +286,11 @@ Q_proy[,1] <- Run_Modelos$Qsim
 # Finalmente, vamos a evaluar el modelo en el periodo de validacion, que 
 # corresponde al periodo 01/1979 - 12/1988
 
-# AL RETOMAR, HAZ EL CODIGO QUE ESTÁ AQUÍ, QUE BASICAMENTE CORRESPONDE A UTILIZAR
-# LA FUNCION ggof. INTENTA QUE TE RESULTE LA LINEA DE PILAR BARRIA.
+# Utilizaremos la herramienta ggof para obtener la evaluacion del modelo:
+ggof(sim=Run_Modelos$Qsim, obs=BasinObs$Q, ftype="ma", FUN=sum)
+
+## Aca Pilar ocupa la misma funcion ggof de arriba, para mostrar valores
+## mensuales y anuales. Ya expresé en lineas anteriores mis reparos y problemas.
 
 # Se calculan los residuos:
 res <- Run_Modelos$Qsim - BasinObs$Q
